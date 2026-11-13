@@ -95,10 +95,17 @@
     if (q.length) {
       let kmax = 0; q.forEach((r, k) => { if (r.L > q[kmax].L) kmax = k; });
       const th = q.map(r => (r.minute - q[0].minute) / 60), tl = q.map(r => r.tail);
+      // formation: onset -> first time the tail reaches its most upstream point;
+      // recovery: last time there -> end. NaN when the tail sits at the upstream study limit.
+      const tmin = Math.min(...tl);
+      const kf = tl.findIndex(x => Math.abs(x - tmin) < 1e-9);
+      let kr = kf; tl.forEach((x, k) => { if (Math.abs(x - tmin) < 1e-9) kr = k; });
+      const censored = tmin <= segs[0].x0 + 1e-9;
       res = Object.assign(res, {
         L_max: q[kmax].L, L_avg: q.reduce((s, r) => s + r.L, 0) / q.length,
-        head: median(q.map(r => r.head)), tail_min: Math.min(...tl), t_Lmax: q[kmax].minute,
-        w_f: fit(th.slice(0, kmax + 1), tl.slice(0, kmax + 1)), w_r: fit(th.slice(kmax), tl.slice(kmax)), kmax,
+        head: median(q.map(r => r.head)), tail_min: tmin, t_Lmax: q[kmax].minute,
+        w_f: censored ? NaN : fit(th.slice(0, kf + 1), tl.slice(0, kf + 1)),
+        w_r: censored ? NaN : fit(th.slice(kr), tl.slice(kr)), kmax, kf, kr, censored,
       });
     }
     return res;

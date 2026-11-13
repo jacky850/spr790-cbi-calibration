@@ -47,7 +47,7 @@ minutes, giving $u_{i,d}(t)$. They are then smoothed with a centred 3-bin mean:
 v_{i,d}(t) = \tfrac{1}{3}\big[u_{i,d}(t-1) + u_{i,d}(t) + u_{i,d}(t+1)\big]
 ```
 
-The **average weekday profile** uses the mean over days before smoothing:
+The **average weekday profile** uses the mean over the 64 weekdays before smoothing:
 
 ```math
 \bar v_i(t) = \mathrm{smooth}\Big(\tfrac{1}{|\mathcal{D}|}\textstyle\sum_{d} u_{i,d}(t)\Big)
@@ -153,13 +153,23 @@ x_{\text{head},d} = \mathrm{median}_{t} \, x_{\text{head}}(t)
 
 ### 1.7 Queue formation and recovery speeds
 
-Let $t^{*}$ be the bin with the largest $L(t)$. Fit straight lines to the
-queue-tail position over time ($t$ in hours from the first bin):
+Let $t_f$ be the first bin and $t_r$ the last bin at which the queue tail is
+at its most upstream position, $\min_t x_{\text{tail}}(t)$. Fit straight lines
+to the queue-tail position over time ($t$ in hours from the first bin):
 
 ```math
-w_f = \frac{d\,x_{\text{tail}}}{dt}\Big|_{\,t \le t^{*}} , \qquad
-w_r = \frac{d\,x_{\text{tail}}}{dt}\Big|_{\,t \ge t^{*}} \qquad (\text{mph, ordinary least squares})
+w_f = \frac{d\,x_{\text{tail}}}{dt}\Big|_{\,t \le t_f} , \qquad
+w_r = \frac{d\,x_{\text{tail}}}{dt}\Big|_{\,t \ge t_r} \qquad (\text{mph, ordinary least squares})
 ```
+
+- **Why the tail and not $L_{\max}$.** The fit windows end and start where
+  the tail turns, not at $L_{\max}$. On I-10 WB PM, for example, the tail
+  stops moving after about an hour while the queue keeps growing at its head.
+  A window ending at $L_{\max}$ would mix hours of a stationary tail into
+  the formation fit.
+- **Not reported** (empty) when the tail reaches the upstream end of the
+  study corridor, because the true tail is outside the data.
+- At least two bins are needed on each side; otherwise the value is empty.
 
 - A negative value means the tail moves upstream; a positive value means it
   moves downstream.

@@ -29,8 +29,9 @@ September 1, 2025**, using INRIX probe speeds. It produces two things:
 
 These are the parameters reported in the ADOT Corridor Reliability progress
 report (slide 17), plus the queue measures from the CBI dashboard. All values
-are taken at the bottleneck on the **average weekday**. The four
-peak-direction rows match slide 17 of the progress report.
+are taken at the bottleneck on the **average weekday**: the mean 15-minute
+speed of each segment over the 64 weekdays. The four peak-direction rows match
+slide 17 of the progress report.
 
 | Corridor, peak | Bottleneck | Event window | Duration P (h) | D/C (h) | Max queue L<sub>max</sub> (mi) | Queue extent QE, mean (p95), mi | Lowest speed (mph) | Congested days |
 |---|---|---|---|---|---|---|---|---|
@@ -82,7 +83,7 @@ Detailed definitions and formulas are in
 | Bottleneck | Segment with the longest event on the average weekday |
 | Lowest speed v<sub>t2</sub> | Minimum speed during the event |
 | L<sub>max</sub>, L<sub>avg</sub>, queue head | Length of the congested stretch through the bottleneck (maximum and time average), and its downstream end |
-| Formation / recovery speed | How fast the queue tail moves upstream while the queue grows, and back downstream while it clears (mph) |
+| Formation / recovery speed | How fast the queue tail moves upstream until it reaches its farthest point, and back downstream as it clears (mph). Not reported when the tail is outside the study corridor. |
 | Queue extent QE | Longest congested stretch anywhere on the corridor, from 2 h before to 2 h after the peak |
 
 **2 · Flow derived from speed (estimated)**

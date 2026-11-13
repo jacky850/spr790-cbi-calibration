@@ -35,7 +35,7 @@ XD_META = {
     "i10_phoenix": "Only-I-10-0601-to-0901_2025-06-01_to_2025-09-02_5_min_part_1",
     "i17_phoenix": "Only-I-17-0601-to-0901_2025-06-01_to_2025-09-02_5_min_part_1",
 }
-PROFILES = [("avg", "Average weekday", "mean"), ("p50", "Median weekday (p50 speed)", 0.50),
+PROFILES = [("avg", "Average weekday (mean of 64)", "mean"), ("p50", "Median weekday (p50 speed)", 0.50),
             ("p15", "Bad day (p15 speed)", 0.15), ("p05", "Worst days (p5 speed)", 0.05)]
 sm = lambda x: x.rolling(3, center=True, min_periods=1).mean()
 

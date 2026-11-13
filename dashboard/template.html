@@ -118,7 +118,7 @@ h2.sec.speed{color:var(--speed)}h2.sec.flow{color:var(--flow)}
 
 <div class="page" id="p-cal">
   <div class="note">One row per corridor × direction × weekday peak at the bottleneck (the segment with the longest event
-    on the average weekday). <b>Bold rows</b> are the peak directions. “avg” = average weekday profile; “median (p85)” = over
+    on the average weekday). <b>Bold rows</b> are the peak directions. “avg” = average weekday profile (mean speed over the 64 weekdays); “median (p85)” = over
     congested weekdays. Formulas: <a id="readme-link" target="_blank" rel="noopener">README</a>.</div>
   <div class="card"><h2 class="sec speed" style="padding:12px 14px 0">1 · Speed-based parameters</h2><div class="tw"><table class="cal" id="tab-speed"></table></div></div>
   <div class="card" style="margin-top:12px"><h2 class="sec flow" style="padding:12px 14px 0">2 · Flow parameters derived from speed (estimated)</h2><div class="tw"><table class="cal" id="tab-flow"></table></div></div>
@@ -280,7 +280,8 @@ function show(a) {
     card(`${fmt(a.t0)}–${fmt(a.t3)}`, 'Event window'), card(`${f(a.P_h)} h`, 'Duration P'),
     card(`${f(a.v_t2, 1)} mph`, `Lowest speed v_t2 (${fmt(a.t_vt2)})`), card(f(a.v_t2 / a.vf, 2), 'v_t2 / v_f'),
     card(`${f(a.L_max)} mi`, 'Max queue L_max'), card(`${f(a.L_avg)} mi`, 'Avg queue L_avg'),
-    card(`mi ${f(a.head)}`, 'Queue head (bottleneck)'), card(`${sg(a.w_f)} mph`, 'Formation w_f'), card(`${sg(a.w_r)} mph`, 'Recovery w_r'),
+    card(`mi ${f(a.head)}`, 'Queue head (bottleneck)'), card(a.censored ? 'n/a' : `${sg(a.w_f)} mph`, a.censored ? 'Formation w_f (tail outside corridor)' : 'Formation w_f'),
+    card(a.censored ? 'n/a' : `${sg(a.w_r)} mph`, a.censored ? 'Recovery w_r (tail outside corridor)' : 'Recovery w_r'),
   ].join('');
   document.getElementById('k-flow').innerHTML = [
     card(`${f(a.DC_h)} h`, 'D/C'), card(f(a.mean_qC, 3), 'Mean q/C in event'), card(`${fi(a.mu_hat)}`, '<span style="text-transform:none">μ<sub>S3</sub></span> veh/h/lane'),
@@ -324,8 +325,8 @@ function renderShock(a) {
     { type: 'heatmap', z, x, y, colorscale: SPEED_CS, zmin: 0, zmax: 75, showscale: false, hovertemplate: '%{x} · mi %{y:.2f}<br>%{z:.1f} mph<extra></extra>' },
     { type: 'scatter', mode: 'markers', x: q.map(r => fmt(r.minute)), y: q.map(r => r.tail), name: 'queue tail', marker: { color: '#0f172a', size: 6 } },
     { type: 'scatter', mode: 'markers', x: q.map(r => fmt(r.minute)), y: q.map(r => r.head), name: 'queue head', marker: { color: '#0f172a', size: 6, symbol: 'diamond-open' } },
-    line(0, km, a.w_f, `formation ${sg(a.w_f)} mph`, '#ef4444'),
-    line(km, q.length - 1, a.w_r, `recovery ${sg(a.w_r)} mph`, '#2563eb'),
+    line(0, a.kf, a.w_f, `formation ${sg(a.w_f)} mph`, '#ef4444'),
+    line(a.kr, q.length - 1, a.w_r, `recovery ${sg(a.w_r)} mph`, '#2563eb'),
     { type: 'scatter', mode: 'markers', x: [fmt(a.t_Lmax)], y: [a.head], name: `head mi ${f(a.head)}`, marker: { color: '#f59e0b', size: 16, symbol: 'star' } },
   ].filter(Boolean);
   Plotly.react('shock-div', tr, small('Queue (shockwave) diagram', 'Time', 'Mile'), { displayModeBar: false, responsive: true });
@@ -377,7 +378,7 @@ document.getElementById('method').innerHTML = `
 <li><b>Bottleneck:</b> segment with the longest peak event on the selected day (average weekday in the calibration table).</li>
 <li><b>Lowest speed:</b> v<sub>t2</sub> = min speed in [t<sub>0</sub>, t<sub>3</sub>].</li>
 <li><b>Queue:</b> at each bin of the event, extend the congested run from the analyzed segment up- and downstream. Tail = upstream end, head = downstream end (active bottleneck), <b>L(t) = head − tail</b>; L<sub>max</sub>, L<sub>avg</sub>, median head.</li>
-<li><b>Formation / recovery speed:</b> least-squares slope of the tail position vs time before / after L<sub>max</sub> (mph; negative = upstream). These are queue growth and clearance rates at 15-min resolution, not stop-and-go kinematic waves.</li></ul>
+<li><b>Formation / recovery speed:</b> least-squares slope of the tail position vs time, from onset until the tail first reaches its most upstream point (formation), and from the last time it is there until the end (recovery); mph, negative = upstream. Not reported when the tail sits at the upstream end of the study corridor. These are queue growth and clearance rates at 15-min resolution, not stop-and-go kinematic waves.</li></ul>
 <h3>2 · Flow parameters derived from speed (estimated)</h3><ul>
 <li><b>S3:</b> v = v<sub>f</sub> / [1 + (k/k<sub>c</sub>)<sup>m</sup>]<sup>2/m</sup>, q = k·v, C = k<sub>c</sub>·v<sub>c</sub>. Inverted: <b>q/C = min{ (v/v<sub>c</sub>)·[(v<sub>f</sub>/v)<sup>m/2</sup> − 1]<sup>1/m</sup>, 1 }</b>. C and k<sub>c</sub> cancel.</li>
 <li><b>D/C (h)</b> = Σ<sub>event</sub> (q/C)·Δt, Δt = 0.25 h. Independent of C.</li>

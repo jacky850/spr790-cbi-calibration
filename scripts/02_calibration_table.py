@@ -94,11 +94,18 @@ def queue_geometry(grid, b, vc, x0, x1, date, t0_h, t3_h):
     qd = pd.DataFrame(rows, columns=["ts", "tail", "head"])
     qd["L"] = qd["head"] - qd["tail"]
     th = (qd["ts"] - qd["ts"].iloc[0]).dt.total_seconds().to_numpy() / 3600
+    tl = qd["tail"].to_numpy()
     k = int(qd["L"].to_numpy().argmax())
+    # formation: onset -> first time the tail reaches its most upstream point;
+    # recovery: last time at that point -> end. Not identifiable when the tail
+    # sits at the upstream study limit (the true tail is outside the corridor).
+    at_min = np.flatnonzero(np.isclose(tl, tl.min()))
+    kf, kr = int(at_min[0]), int(at_min[-1])
+    censored = tl.min() <= x0[0] + 1e-9
     return dict(L_max=qd["L"].max(), L_avg=qd["L"].mean(), head=qd["head"].median(),
-                tail_min=qd["tail"].min(), t_Lmax=qd["ts"].iloc[k],
-                w_f=slope(th[:k + 1], qd["tail"].to_numpy()[:k + 1]),
-                w_r=slope(th[k:], qd["tail"].to_numpy()[k:]))
+                tail_min=tl.min(), t_Lmax=qd["ts"].iloc[k],
+                w_f=np.nan if censored else slope(th[:kf + 1], tl[:kf + 1]),
+                w_r=np.nan if censored else slope(th[kr:], tl[kr:]))
 
 
 rows, day_rows = [], []
