@@ -102,7 +102,7 @@ v_{i,d}(t) = \tfrac{1}{3}\big[u_{i,d}(t-1) + u_{i,d}(t) + u_{i,d}(t+1)\big]
 The **average weekday profile** uses the mean over days before smoothing:
 
 ```math
-\bar v_i(t) = \operatorname{smooth}\Big(\tfrac{1}{|\mathcal{D}|}\textstyle\sum_{d} u_{i,d}(t)\Big)
+\bar v_i(t) = \mathrm{smooth}\Big(\tfrac{1}{|\mathcal{D}|}\textstyle\sum_{d} u_{i,d}(t)\Big)
 ```
 
 ### 1.2 Free-flow speed and capacity speed
@@ -197,7 +197,7 @@ Over the event, with $\mathcal{T}_d$ the bins with a queue:
 ```math
 L_{\max,d} = \max_{t \in \mathcal{T}_d} L(t), \qquad
 L_{\text{avg},d} = \frac{1}{|\mathcal{T}_d|}\sum_{t \in \mathcal{T}_d} L(t), \qquad
-x_{\text{head},d} = \operatorname{median}_{t} \, x_{\text{head}}(t)
+x_{\text{head},d} = \mathrm{median}_{t} \, x_{\text{head}}(t)
 ```
 
 **Columns.** `L_max_mi_median`, `L_max_mi_p85`, `L_avg_mi_median` and
