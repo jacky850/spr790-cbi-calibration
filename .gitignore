@@ -1,0 +1,7 @@
+# licensed INRIX data (converted speeds) — not redistributed
+inputs/
+# cbi_plus run outputs: per-segment QC'd speed series and logs
+outputs/
+__pycache__/
+.DS_Store
+archive_cbi_plus/
