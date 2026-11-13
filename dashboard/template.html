@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SPR-790 CBI Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root{
+  --bg:#eef2f7;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --top1:#0c1a3a;--top2:#1e3a8a;--top3:#312e81;--accent:#6366f1;--warn:#f59e0b;
+  --speed:#6366f1;--flow:#0d9488;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:13px;min-height:100vh}
+#topbar{background:linear-gradient(120deg,var(--top1) 0%,var(--top2) 60%,var(--top3) 100%);
+  padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 2px 20px rgba(15,23,42,.45)}
+.brand h1{font-size:15px;font-weight:800;color:#fff;white-space:nowrap}
+.brand h1 em{color:#a5b4fc;font-style:normal}
+.brand p{font-size:11px;color:#c7d2fe;margin-top:2px}
+.vsep{width:1px;height:30px;background:rgba(255,255,255,.15)}
+.ctrl{display:flex;align-items:center;gap:6px}
+.ctrl label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc;white-space:nowrap}
+select,button.tb{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:7px;
+  padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer;outline:none;font-family:inherit}
+select option{background:#1e293b;color:#fff}
+button.tb{background:linear-gradient(135deg,#f59e0b,#f97316);border:none;font-weight:700}
+button.tb:hover{filter:brightness(1.08)}
+#tabs{display:flex;gap:4px;padding:10px 14px 0}
+#tabs button{border:none;background:transparent;padding:9px 16px;font:600 13px Inter,sans-serif;color:var(--muted);
+  border-radius:9px 9px 0 0;cursor:pointer}
+#tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 -1px 0 var(--line) inset}
+.page{display:none;padding:0 14px 14px}.page.on{display:block}
+.card{background:var(--card);border-radius:14px;border:1px solid rgba(226,232,240,.9);
+  box-shadow:0 1px 4px rgba(0,0,0,.05),0 6px 24px rgba(0,0,0,.06);overflow:hidden}
+.card-hdr{padding:10px 14px 0;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#94a3b8}
+.note{font-size:12px;color:#475569;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:9px 13px;margin:12px 0}
+.note b{color:var(--ink)}
+#row1{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,7fr);gap:12px;margin-top:12px}
+#map-div{height:420px}#heat-div{height:420px}
+#ap{margin-top:12px;display:none}
+#ap-inner{padding:14px 18px 16px}
+#ap-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#ap-title{font-size:15px;font-weight:800}
+#ap-sub{font-size:12px;color:var(--muted);margin-top:2px}
+#ap-close{background:#fff0f0;color:#dc2626;border:1.5px solid #fecaca;border-radius:7px;padding:4px 14px;cursor:pointer;font-weight:700;font-family:inherit}
+#ap-msg{display:none;font-size:12px;background:#fefce8;border-left:3px solid var(--warn);border-radius:0 7px 7px 0;padding:9px 13px;color:#78350f;margin-top:12px}
+.kgroup{margin-top:12px}
+.kgroup h4{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:7px}
+.kgroup.speed h4{color:var(--speed)}.kgroup.flow h4{color:var(--flow)}
+.kgroup h4 span{font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:6px}
+.krow{display:flex;flex-wrap:wrap;gap:8px}
+.kpi{background:#f8fafc;border-radius:10px;padding:8px 13px;min-width:118px;border-left:3.5px solid var(--speed)}
+.flow .kpi{border-left-color:var(--flow)}
+.kpi b{display:block;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.kpi s{font-size:9.5px;color:#94a3b8;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:.5px}
+#ap-charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);gap:10px;margin-top:14px}
+#ap-charts>div{min-width:0}
+#vt-div,#shock-div,#lt-div{height:300px}
+table.cal{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+table.cal th{background:#f1f5f9;color:#334155;font-weight:700;text-align:right;padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.cal th:first-child,table.cal td:first-child,table.cal td.l,table.cal th.l{text-align:left}
+table.cal td{padding:6px 9px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap}
+table.cal tr.peak td{font-weight:700}
+table.cal tr:hover td{background:#f8fafc}
+.tw{overflow-x:auto;padding:4px 14px 14px}
+h2.sec{font-size:14px;font-weight:800;margin:16px 0 4px}
+h2.sec.speed{color:var(--speed)}h2.sec.flow{color:var(--flow)}
+#dist-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+#dist-p,#dist-dc{height:340px}
+.method{padding:16px 20px;line-height:1.6;font-size:13px;max-width:980px}
+.method h3{font-size:14px;margin:14px 0 4px}
+.method code{background:#f1f5f9;border-radius:4px;padding:1px 5px;font-size:12px}
+.method li{margin-left:18px}
+.foot{font-size:11px;color:var(--muted);padding:12px 16px}
+@media(max-width:980px){#row1,#ap-charts,#dist-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="brand"><h1>SPR-790 &nbsp;<em>CBI Dashboard</em> · I-10 / I-17 Phoenix</h1>
+    <p id="brand-sub"></p></div>
+  <div class="vsep"></div>
+  <div class="ctrl"><label>Corridor</label><select id="sel-corr"></select></div>
+  <div class="ctrl"><label>Day</label><select id="sel-day"></select></div>
+  <div class="ctrl"><label>Peak</label><select id="sel-peak"><option value="AM">AM 06–09</option><option value="PM">PM 14–18</option></select></div>
+  <button class="tb" id="btn-bn">Analyze bottleneck</button>
+</div>
+<div id="tabs">
+  <button data-p="p-ana" class="on">Corridor analysis</button>
+  <button data-p="p-cal">Calibration table</button>
+  <button data-p="p-met">Method</button>
+</div>
+
+<div class="page on" id="p-ana">
+  <div class="note">Click any congested (red) cell of the speed heatmap to run the CBI analysis there, or press
+    <b>Analyze bottleneck</b> for the segment with the longest event in the selected peak. Congestion means speed below
+    <b>v<sub>c</sub> = 0.707 v<sub>f</sub></b> of each segment. Speed-based parameters are measured. Flow parameters come
+    from speed through the S3 model and are <b>estimates</b>.</div>
+  <div id="row1">
+    <div class="card"><div class="card-hdr">Corridor</div><div id="map-div"></div></div>
+    <div class="card"><div id="heat-div"></div></div>
+  </div>
+  <div class="card" id="ap"><div id="ap-inner">
+    <div id="ap-head"><div><div id="ap-title"></div><div id="ap-sub"></div></div><button id="ap-close">Close</button></div>
+    <div id="ap-msg"></div>
+    <div class="kgroup speed" id="kg-speed"><h4>1 · Speed-based <span>measured from INRIX speeds</span></h4><div class="krow" id="k-speed"></div></div>
+    <div class="kgroup flow" id="kg-flow"><h4>2 · Flow from speed <span>S3 model, estimated (D/C independent of C)</span></h4><div class="krow" id="k-flow"></div></div>
+    <div id="ap-charts">
+      <div><div id="vt-div"></div></div>
+      <div><div id="shock-div"></div></div>
+      <div><div id="lt-div"></div></div>
+    </div>
+  </div></div>
+</div>
+
+<div class="page" id="p-cal">
+  <div class="note">One row per corridor × direction × weekday peak at the bottleneck (the segment with the longest event
+    on the average weekday). <b>Bold rows</b> are the peak directions. “avg” = average weekday profile; “median (p85)” = over
+    congested weekdays. Formulas: <a id="readme-link" target="_blank" rel="noopener">README</a>.</div>
+  <div class="card"><h2 class="sec speed" style="padding:12px 14px 0">1 · Speed-based parameters</h2><div class="tw"><table class="cal" id="tab-speed"></table></div></div>
+  <div class="card" style="margin-top:12px"><h2 class="sec flow" style="padding:12px 14px 0">2 · Flow parameters derived from speed (estimated)</h2><div class="tw"><table class="cal" id="tab-flow"></table></div></div>
+  <div id="dist-row">
+    <div class="card"><div class="card-hdr">Daily congestion duration P at the bottleneck</div><div id="dist-p"></div></div>
+    <div class="card"><div class="card-hdr">Daily max queue length L<sub>max</sub> at the bottleneck</div><div id="dist-dc"></div></div>
+  </div>
+</div>
+
+<div class="page" id="p-met"><div class="card method" id="method"></div></div>
+<div class="foot" id="foot"></div>
+
+<script>/*__CBI_CORE__*/</script>
+<script id="data" type="application/json">/*__DATA__*/</script>
+<script>
+'use strict';
+const D = JSON.parse(document.getElementById('data').textContent);
+const M = D.meta.m, STEP = D.meta.bin_min;
+const MIN = []; for (let t = D.meta.t0_min; t < D.meta.t1_min; t += STEP) MIN.push(t);
+const fmt = m => { if (!Number.isFinite(m)) return '—'; const r = Math.round(m); return String(Math.floor(r / 60)).padStart(2, '0') + ':' + String(r % 60).padStart(2, '0'); };
+const TL = MIN.map(fmt);
+const f = (x, n = 2) => Number.isFinite(x) ? x.toFixed(n) : '—';
+const fi = x => Number.isFinite(x) ? Math.round(x).toLocaleString('en-US') : '—';
+const sg = (x, n = 1) => Number.isFinite(x) ? (x > 0 ? '+' : '') + x.toFixed(n) : '—';
+const SPEED_CS = [[0, '#7f1d1d'], [0.25, '#dc2626'], [0.45, '#f97316'], [0.6, '#facc15'], [0.75, '#a3e635'], [1, '#15803d']];
+const PEAK = D.meta.periods;
+const README = 'https://github.com/jacky850/spr790-cbi-calibration#readme';
+document.getElementById('readme-link').href = README;
+document.getElementById('brand-sub').textContent = D.meta.window + ' · INRIX XD probe speeds · 15-min';
+document.getElementById('foot').innerHTML = `Data: INRIX Roadway Analytics XD (licensed). Lanes and capacity: AZTDM DTA network (GMNS). Definitions follow the ADOT Corridor Reliability progress report. <a href="${README}" target="_blank" rel="noopener">Formulas and code</a>.`;
+
+let cur = { corr: null, day: 'avg', peak: 'AM' }, grid = null, segs = null, sel = null, firstShow = true;
+
+// ---------- controls ----------
+const selCorr = document.getElementById('sel-corr'), selDay = document.getElementById('sel-day'), selPeak = document.getElementById('sel-peak');
+Object.keys(D.corridors).forEach(k => selCorr.add(new Option(`${k} (${D.corridors[k].direction_name})`, k)));
+function fillDays() {
+  const c = D.corridors[cur.corr]; selDay.innerHTML = '';
+  D.meta.profiles.forEach(([k, lbl]) => selDay.add(new Option(lbl, k)));
+  c.days.forEach(d => { const dt = new Date(d + 'T12:00:00'); selDay.add(new Option(dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), d)); });
+  selDay.value = c.speed[cur.day] ? cur.day : 'avg';
+}
+function load() {
+  const c = D.corridors[cur.corr];
+  segs = c.segments; grid = c.speed[cur.day].map(CBI.dec);
+  closeAP();
+}
+selCorr.onchange = () => { cur.corr = selCorr.value; fillDays(); cur.day = selDay.value; load(); };
+selDay.onchange = () => { cur.day = selDay.value; load(); };
+selPeak.onchange = () => { cur.peak = selPeak.value; renderHeat(); closeAP(); };
+document.getElementById('btn-bn').onclick = analyzeBottleneck;
+document.getElementById('ap-close').onclick = closeAP;
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === b.dataset.p));
+  window.dispatchEvent(new Event('resize'));
+});
+
+// ---------- map ----------
+function renderMap(hi) {
+  const lat = [], lon = [], txt = [];
+  segs.forEach(s => { lat.push(s.lat[0], s.lat[1], null); lon.push(s.lon[0], s.lon[1], null); });
+  const tr = [{ type: 'scattermap', mode: 'lines', lat, lon, line: { width: 5, color: '#6366f1' }, hoverinfo: 'skip', name: cur.corr }];
+  tr.push({ type: 'scattermap', mode: 'markers+text', lat: [segs[0].lat[0], segs.at(-1).lat[1]], lon: [segs[0].lon[0], segs.at(-1).lon[1]],
+    marker: { size: 11, color: ['#22c55e', '#ef4444'], symbol: 'circle' }, text: ['start (mi 0)', `end (mi ${segs.at(-1).x1.toFixed(1)})`], textposition: 'top right', hoverinfo: 'text', name: '' });
+  if (hi && hi.queue && hi.queue.length) {
+    const k = hi.kmax || 0, q = hi.queue[k], la = [], lo = [];
+    for (let j = q.u; j <= q.d; j++) { la.push(segs[j].lat[0], segs[j].lat[1], null); lo.push(segs[j].lon[0], segs[j].lon[1], null); }
+    tr.push({ type: 'scattermap', mode: 'lines', lat: la, lon: lo, line: { width: 8, color: '#dc2626' }, name: 'queue at L_max', hoverinfo: 'name' });
+    const b = segs[hi.i]; tr.push({ type: 'scattermap', mode: 'markers', lat: [b.lat[1]], lon: [b.lon[1]], marker: { size: 14, color: '#f59e0b' }, name: 'analyzed segment', hoverinfo: 'name' });
+  }
+  const la = segs.flatMap(s => s.lat), lo = segs.flatMap(s => s.lon);
+  const cLat = (Math.min(...la) + Math.max(...la)) / 2, cLon = (Math.min(...lo) + Math.max(...lo)) / 2;
+  const span = Math.max(Math.max(...la) - Math.min(...la), (Math.max(...lo) - Math.min(...lo)) * 0.83);
+  const zoom = Math.max(8, Math.min(12.5, Math.log2(360 / span) - 1.6));
+  // serialize map renders: a new react before the basemap style has loaded throws,
+  // so each render waits for the previous one's style to finish loading
+  const job = () => Plotly.react('map-div', tr, { map: { style: 'carto-positron', center: { lat: cLat, lon: cLon }, zoom }, margin: { l: 0, r: 0, t: 0, b: 0 }, showlegend: false }, { displayModeBar: false, responsive: true }).then(styleReady);
+  mapQ = mapQ.then(job, job);
+}
+let mapQ = Promise.resolve();
+function styleReady() {
+  return new Promise(res => {
+    const t0 = Date.now();
+    (function poll() {
+      const el = document.getElementById('map-div');
+      const mp = el._fullLayout && el._fullLayout.map && el._fullLayout.map._subplot && el._fullLayout.map._subplot.map;
+      if ((mp && mp.isStyleLoaded()) || Date.now() - t0 > 8000) return res();
+      setTimeout(poll, 100);
+    })();
+  });
+}
+
+// ---------- heatmap ----------
+const ymid = () => segs.map(s => (s.x0 + s.x1) / 2);
+function renderHeat(an) {
+  const z = grid.map(r => r.map(v => Number.isFinite(v) ? v : null));
+  const p = PEAK[cur.peak];
+  const tr = [{ type: 'heatmap', z, x: TL, y: ymid(), colorscale: SPEED_CS, zmin: 0, zmax: 75,
+    colorbar: { title: { text: 'mph', side: 'right' }, thickness: 12 },
+    customdata: segs.map(s => TL.map(() => [s.name || s.section, (0.707 * s.vf).toFixed(1)])),
+    hovertemplate: '%{x} · mile %{y:.2f}<br>%{customdata[0]}<br>speed %{z:.1f} mph (v<sub>c</sub> %{customdata[1]})<extra></extra>' }];
+  if (an && an.queue && an.queue.length) {
+    tr.push({ type: 'scatter', mode: 'lines', x: an.queue.map(r => fmt(r.minute)), y: an.queue.map(r => r.tail), line: { color: '#0f172a', width: 2 }, name: 'queue tail', hoverinfo: 'skip' });
+    tr.push({ type: 'scatter', mode: 'lines', x: an.queue.map(r => fmt(r.minute)), y: an.queue.map(r => r.head), line: { color: '#0f172a', width: 2, dash: 'dot' }, name: 'queue head', hoverinfo: 'skip' });
+  }
+  const dayLbl = selDay.options[selDay.selectedIndex].text;
+  Plotly.react('heat-div', tr, {
+    title: { text: `<b>Speed heatmap</b> — ${cur.corr} · ${dayLbl}`, font: { size: 13 }, x: 0.01, xanchor: 'left' },
+    xaxis: { title: 'Time of day', tickangle: -45, nticks: 20, tickfont: { size: 10 } },
+    yaxis: { title: 'Mile (direction of travel)', tickfont: { size: 10 } },
+    shapes: [{ type: 'rect', xref: 'x', yref: 'paper', x0: fmt(p[0]), x1: fmt(p[1] - STEP), y0: 0, y1: 1, line: { color: '#1e3a8a', width: 1.5, dash: 'dash' }, fillcolor: 'rgba(0,0,0,0)' }],
+    margin: { l: 60, r: 10, t: 40, b: 60 }, showlegend: false,
+  }, { displayModeBar: false, responsive: true });
+  const el = document.getElementById('heat-div');
+  el.removeAllListeners && el.removeAllListeners('plotly_click');
+  el.on('plotly_click', e => {
+    const pt = e.points.find(q => q.data.type === 'heatmap'); if (!pt) return;
+    const k = TL.indexOf(pt.x); const y = pt.y;
+    let i = segs.findIndex(s => y >= s.x0 && y <= s.x1); if (i < 0) i = pt.pointNumber[0];
+    analyzeCell(i, k);
+  });
+}
+
+// ---------- analysis ----------
+function analyzeCell(i, k) {
+  const vc = CBI.vcOf(segs[i].vf, M);
+  if (!(grid[i][k] < vc)) return showMsg(i, `Not congested: ${fmt(MIN[k])}, ${f(grid[i][k], 1)} mph ≥ v_c ${f(vc, 1)} mph on this segment. Click a red cell.`);
+  const ev = CBI.eventAt(MIN, grid[i], vc, k, STEP);
+  if (!ev) return showMsg(i, 'No congestion event found here.');
+  show(Object.assign(CBI.analyze(grid, segs, MIN, i, ev, M), { i, how: 'clicked cell' }));
+}
+function analyzeBottleneck() {
+  const p = PEAK[cur.peak];
+  const bn = CBI.bottleneck(grid, segs, MIN, p[0], p[1], M, STEP);
+  if (!bn) return showMsg(0, `No congestion event of at least 0.5 h with its slowest point in the ${cur.peak} peak on this day.`);
+  show(Object.assign(CBI.analyze(grid, segs, MIN, bn.i, bn.ev, M), { i: bn.i, how: `bottleneck, ${cur.peak} peak` }));
+}
+function closeAP() { document.getElementById('ap').style.display = 'none'; renderMap(); if (segs) renderHeat(); }
+function showMsg(i, msg) {
+  document.getElementById('ap').style.display = 'block';
+  setHead(i, ''); const m = document.getElementById('ap-msg'); m.textContent = msg; m.style.display = 'block';
+  ['kg-speed', 'kg-flow', 'ap-charts'].forEach(id => document.getElementById(id).style.display = 'none');
+}
+function setHead(i, how) {
+  const s = segs[i];
+  document.getElementById('ap-title').textContent = `${s.name || s.section} — mile ${s.x0.toFixed(2)}–${s.x1.toFixed(2)}`;
+  document.getElementById('ap-sub').textContent = `${cur.corr} · ${selDay.options[selDay.selectedIndex].text} · ${how} · XD ${s.id} · ${s.lanes} lanes · v_f ${s.vf.toFixed(1)} mph · v_c ${(CBI.vcOf(s.vf, M)).toFixed(1)} mph`;
+}
+const card = (v, l) => `<div class="kpi"><b>${v}</b><s>${l}</s></div>`;
+function show(a) {
+  sel = a;
+  document.getElementById('ap').style.display = 'block';
+  document.getElementById('ap-msg').style.display = 'none';
+  ['kg-speed', 'kg-flow'].forEach(id => document.getElementById(id).style.display = 'block');
+  document.getElementById('ap-charts').style.display = 'grid';
+  setHead(a.i, a.how);
+  document.getElementById('k-speed').innerHTML = [
+    card(`${fmt(a.t0)}–${fmt(a.t3)}`, 'Event window'), card(`${f(a.P_h)} h`, 'Duration P'),
+    card(`${f(a.v_t2, 1)} mph`, `Lowest speed v_t2 (${fmt(a.t_vt2)})`), card(f(a.v_t2 / a.vf, 2), 'v_t2 / v_f'),
+    card(`${f(a.L_max)} mi`, 'Max queue L_max'), card(`${f(a.L_avg)} mi`, 'Avg queue L_avg'),
+    card(`mi ${f(a.head)}`, 'Queue head (bottleneck)'), card(`${sg(a.w_f)} mph`, 'Formation w_f'), card(`${sg(a.w_r)} mph`, 'Recovery w_r'),
+  ].join('');
+  document.getElementById('k-flow').innerHTML = [
+    card(`${f(a.DC_h)} h`, 'D/C'), card(f(a.mean_qC, 3), 'Mean q/C in event'), card(`${fi(a.mu_hat)}`, '<span style="text-transform:none">μ<sub>S3</sub></span> veh/h/lane'),
+    card(`${a.lanes} × ${fi(a.C)}`, 'Lanes × C (GMNS)'), card(fi(a.D_lane), 'D veh/lane'), card(fi(a.D_all), 'D veh, all lanes'),
+  ].join('');
+  renderVt(a); renderShock(a); renderLt(a); renderHeat(a); renderMap(a);
+  requestAnimationFrame(() => ['vt-div', 'shock-div', 'lt-div'].forEach(id => { const el = document.getElementById(id); if (el.data) Plotly.Plots.resize(el); }));
+  if (!firstShow) document.getElementById('ap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  firstShow = false;
+}
+const small = (title, xt, yt, extra = {}) => Object.assign({ title: { text: title, font: { size: 12 }, x: 0.02, xanchor: 'left' },
+  xaxis: { title: xt, tickangle: -45, nticks: 12, tickfont: { size: 9 } }, yaxis: { title: yt, tickfont: { size: 10 } },
+  margin: { l: 50, r: 14, t: 34, b: 58 }, legend: { orientation: 'h', y: -0.32, font: { size: 10 } } }, extra);
+function renderVt(a) {
+  const v = grid[a.i], qc = v.map(x => Number.isFinite(x) ? CBI.qOverC(x, a.vf, M) : null);
+  Plotly.react('vt-div', [
+    { type: 'scatter', mode: 'lines', x: TL, y: v, name: 'speed', line: { color: '#6366f1', width: 2 } },
+    { type: 'scatter', mode: 'lines', x: TL, y: TL.map(() => a.vc), name: `v_c ${a.vc.toFixed(1)}`, line: { color: '#ef4444', dash: 'dash', width: 1.5 } },
+    { type: 'scatter', mode: 'lines', x: TL, y: qc, name: 'q/C (S3)', yaxis: 'y2', line: { color: '#0d9488', width: 1.5 } },
+  ], small('V(t) and q/C at the analyzed segment', 'Time', 'Speed (mph)', {
+    yaxis: { title: 'Speed (mph)', range: [0, 85] }, yaxis2: { title: 'q/C', overlaying: 'y', side: 'right', range: [0, 1.05], showgrid: false },
+    shapes: [{ type: 'rect', xref: 'x', yref: 'paper', x0: fmt(Math.floor(a.t0 / STEP) * STEP), x1: fmt(Math.min(Math.floor(a.t3 / STEP) * STEP, MIN.at(-1))), y0: 0, y1: 1, fillcolor: 'rgba(239,68,68,.08)', line: { width: 0 } }],
+  }), { displayModeBar: false, responsive: true });
+}
+function renderShock(a) {
+  if (!a.queue || !a.queue.length) { Plotly.purge('shock-div'); return; }
+  const i0 = MIN.findIndex(m => m >= a.t0), i3 = MIN.findIndex(m => m >= a.t3);
+  const k0 = Math.max(0, (i0 < 0 ? 0 : i0) - 4), k1 = i3 < 0 ? MIN.length - 1 : Math.min(MIN.length - 1, i3 + 4);
+  const umin = Math.max(0, Math.min(...a.queue.map(r => r.u)) - 4), dmax = Math.min(segs.length - 1, Math.max(...a.queue.map(r => r.d)) + 4);
+  const z = [], y = [];
+  for (let j = umin; j <= dmax; j++) { z.push(grid[j].slice(k0, k1 + 1)); y.push((segs[j].x0 + segs[j].x1) / 2); }
+  const x = TL.slice(k0, k1 + 1), q = a.queue, km = a.kmax;
+  const th = q.map(r => (r.minute - q[0].minute) / 60);
+  const line = (from, to, w, name, color) => {
+    if (!Number.isFinite(w)) return null;
+    const xs = q.slice(from, to + 1), t = th.slice(from, to + 1), tl = xs.map(r => r.tail);
+    const mt = t.reduce((s, v) => s + v, 0) / t.length, mx = tl.reduce((s, v) => s + v, 0) / tl.length;
+    return { type: 'scatter', mode: 'lines', x: xs.map(r => fmt(r.minute)), y: t.map(tt => mx + w * (tt - mt)), name, line: { color, width: 2.5, dash: 'dash' }, hoverinfo: 'name' };
+  };
+  const tr = [
+    { type: 'heatmap', z, x, y, colorscale: SPEED_CS, zmin: 0, zmax: 75, showscale: false, hovertemplate: '%{x} · mi %{y:.2f}<br>%{z:.1f} mph<extra></extra>' },
+    { type: 'scatter', mode: 'markers', x: q.map(r => fmt(r.minute)), y: q.map(r => r.tail), name: 'queue tail', marker: { color: '#0f172a', size: 6 } },
+    { type: 'scatter', mode: 'markers', x: q.map(r => fmt(r.minute)), y: q.map(r => r.head), name: 'queue head', marker: { color: '#0f172a', size: 6, symbol: 'diamond-open' } },
+    line(0, km, a.w_f, `formation ${sg(a.w_f)} mph`, '#ef4444'),
+    line(km, q.length - 1, a.w_r, `recovery ${sg(a.w_r)} mph`, '#2563eb'),
+    { type: 'scatter', mode: 'markers', x: [fmt(a.t_Lmax)], y: [a.head], name: `head mi ${f(a.head)}`, marker: { color: '#f59e0b', size: 16, symbol: 'star' } },
+  ].filter(Boolean);
+  Plotly.react('shock-div', tr, small('Queue (shockwave) diagram', 'Time', 'Mile'), { displayModeBar: false, responsive: true });
+}
+function renderLt(a) {
+  if (!a.queue || !a.queue.length) { Plotly.purge('lt-div'); return; }
+  const q = a.queue;
+  Plotly.react('lt-div', [
+    { type: 'scatter', mode: 'lines+markers', x: q.map(r => fmt(r.minute)), y: q.map(r => r.L), name: 'L(t)', line: { color: '#6366f1', width: 2 }, marker: { size: 4 }, fill: 'tozeroy', fillcolor: 'rgba(99,102,241,.1)' },
+    { type: 'scatter', mode: 'lines', x: [fmt(q[0].minute), fmt(q.at(-1).minute)], y: [a.L_avg, a.L_avg], name: `L_avg ${f(a.L_avg)} mi`, line: { color: '#f59e0b', dash: 'dash' } },
+  ], small('Queue length L(t)', 'Time', 'Queue length (mi)', { yaxis: { title: 'Queue length (mi)', rangemode: 'tozero' } }), { displayModeBar: false, responsive: true });
+}
+
+// ---------- calibration tab ----------
+function renderCal() {
+  const peakDir = { 'I-10 EB AM': 1, 'I-10 WB PM': 1, 'I-17 SB AM': 1, 'I-17 NB PM': 1 };
+  const rows = D.calibration.slice().sort((a, b) => (a.corridor + a.period + a.direction).localeCompare(b.corridor + b.period + b.direction));
+  const key = r => `${r.corridor} ${r.direction} ${r.period}`;
+  const loc = r => (r.bottleneck_location || r.bottleneck_section).replace(/\s+/g, ' ');
+  const T = (id, head, cell) => {
+    document.getElementById(id).innerHTML = '<tr>' + head.map((h, j) => `<th class="${j < 2 ? 'l' : ''}">${h}</th>`).join('') + '</tr>' +
+      rows.map(r => `<tr class="${peakDir[key(r)] ? 'peak' : ''}">` + cell(r).map((c, j) => `<td class="${j < 2 ? 'l' : ''}">${c}</td>`).join('') + '</tr>').join('');
+  };
+  T('tab-speed', ['Corridor, peak', 'Bottleneck', 'Mile', 'Event (avg)', 'P avg h', 'P median (p85) h', 'Cong. days', 'v_t2 mph', 'v_t2/v_f',
+    'L_max med (p85) mi', 'L_avg mi', 'Head mi', 'w_f mph', 'w_r mph', 'QE mean (p95) mi', 'P len-wtd h'],
+    r => [key(r), loc(r), f(r.bottleneck_mile, 1), `${r.event_start_avg}–${r.event_end_avg}`, f(r.P_h_avg), `${f(r.P_h_median)} (${f(r.P_h_p85)})`,
+      `${r.congested_days}/${r.weekdays}`, f(r.v_t2_mph_median, 1), f(r.speed_drop_vt2_over_vf), `${f(r.L_max_mi_median, 1)} (${f(r.L_max_mi_p85, 1)})`,
+      f(r.L_avg_mi_median, 1), f(r.queue_head_mi_median, 1), sg(r.w_f_mph_median), sg(r.w_r_mph_median), `${f(r.QE_mi_mean, 1)} (${f(r.QE_mi_p95, 1)})`, f(r.P_length_weighted_h)]);
+  T('tab-flow', ['Corridor, peak', 'Bottleneck', 'Lanes × C', 'D/C avg h', 'D/C median (p85) h', 'Mean q/C', 'μ<sub>S3</sub> veh/h/ln', 'D veh/lane', 'D all lanes', 'V veh/lane', 'D/V', 'VMT', 'VHT', 'VHD', 'TTI (VMT)'],
+    r => [key(r), loc(r), `${r.lanes} × ${fi(r.C_vphpl)}`, f(r.DC_h_avg), `${f(r.DC_h_median)} (${f(r.DC_h_p85)})`, f(r.mean_qC_in_event, 3), fi(r.mean_event_flow_vphpl),
+      fi(r.D_veh_per_lane_avg), fi(r.D_veh_all_lanes_avg), fi(r.V_veh_per_lane_avg), f(r.D_over_V), fi(r.VMT), fi(r.VHT), fi(r.VHD), f(r.TTI_VMT)]);
+  const order = rows.map(key);
+  // box plots from quantiles only (min, q1, median, q3, max over congested weekdays)
+  const box = (div, col, yt) => Plotly.react(div, order.filter(k => D.dist[k]).map(k => {
+    const q = D.dist[k][col];
+    return { type: 'box', name: k, x: [k], lowerfence: [q[0]], q1: [q[1]], median: [q[2]], q3: [q[3]], upperfence: [q[4]],
+      fillcolor: peakDir[k] ? 'rgba(99,102,241,.35)' : 'rgba(148,163,184,.35)', line: { color: peakDir[k] ? '#4338ca' : '#64748b' }, hoverinfo: 'y' };
+  }), { showlegend: false, yaxis: { title: yt, rangemode: 'tozero' }, xaxis: { tickangle: -30, tickfont: { size: 10 } }, margin: { l: 50, r: 10, t: 10, b: 80 } }, { displayModeBar: false, responsive: true });
+  box('dist-p', 'P_h', 'P (h)'); box('dist-dc', 'L_max_mi', 'L_max (mi)');
+}
+
+// ---------- method tab ----------
+document.getElementById('method').innerHTML = `
+<h3>Data and window</h3><p>${D.meta.window}. INRIX XD 5-min speeds (real-time records), averaged to 15 min and smoothed with a centred 3-bin mean. Mile = distance from the corridor start in the direction of travel.</p>
+<h3>Day profiles</h3><p>The public dashboard shows speed profiles over the 64 weekdays, not single days: <b>Average weekday</b> (mean speed of each 15-min cell), <b>Median weekday</b> (50th-percentile speed), <b>Bad day</b> (15th-percentile speed) and <b>Worst days</b> (5th-percentile speed). Percentile profiles combine the slow days of each cell, so they show how far congestion reaches on bad days; they are not one real day. Daily results at each bottleneck are summarized in the <i>Calibration table</i> tab.</p>
+<h3>1 · Speed-based parameters (measured)</h3><ul>
+<li><b>Free-flow and capacity speed:</b> v<sub>f</sub> = 85th percentile of weekday night (21–05) speed per segment; v<sub>c</sub> = v<sub>f</sub>·2<sup>−2/m</sup>, m = 4 (≈ 0.707 v<sub>f</sub>).</li>
+<li><b>Event:</b> run of bins with speed &lt; v<sub>c</sub>; it ends only when speed stays ≥ v<sub>c</sub> for 30 min. t<sub>0</sub>, t<sub>3</sub> are interpolated at the crossings. <b>P = t<sub>3</sub> − t<sub>0</sub></b>. For a peak: the longest event (≥ 0.5 h) whose slowest bin falls in the peak; it may extend past the peak.</li>
+<li><b>Bottleneck:</b> segment with the longest peak event on the selected day (average weekday in the calibration table).</li>
+<li><b>Lowest speed:</b> v<sub>t2</sub> = min speed in [t<sub>0</sub>, t<sub>3</sub>].</li>
+<li><b>Queue:</b> at each bin of the event, extend the congested run from the analyzed segment up- and downstream. Tail = upstream end, head = downstream end (active bottleneck), <b>L(t) = head − tail</b>; L<sub>max</sub>, L<sub>avg</sub>, median head.</li>
+<li><b>Formation / recovery speed:</b> least-squares slope of the tail position vs time before / after L<sub>max</sub> (mph; negative = upstream). These are queue growth and clearance rates at 15-min resolution, not stop-and-go kinematic waves.</li></ul>
+<h3>2 · Flow parameters derived from speed (estimated)</h3><ul>
+<li><b>S3:</b> v = v<sub>f</sub> / [1 + (k/k<sub>c</sub>)<sup>m</sup>]<sup>2/m</sup>, q = k·v, C = k<sub>c</sub>·v<sub>c</sub>. Inverted: <b>q/C = min{ (v/v<sub>c</sub>)·[(v<sub>f</sub>/v)<sup>m/2</sup> − 1]<sup>1/m</sup>, 1 }</b>. C and k<sub>c</sub> cancel.</li>
+<li><b>D/C (h)</b> = Σ<sub>event</sub> (q/C)·Δt, Δt = 0.25 h. Independent of C.</li>
+<li><b>Mean q/C</b> = (D/C)/P; <b>μ<sub>S3</sub></b> = mean q/C × C (speed-implied discharge rate).</li>
+<li><b>D</b> = C·(D/C) per lane; × lanes for all lanes. C = AZTDM GMNS per-lane capacity (1,688 / 1,851 / 1,935 by area type).</li>
+<li>D/C ≈ P by construction: congested speeds map to q/C near 1. D/C becomes informative once S3 is calibrated with counts. Speed-based volumes ran 1.4–1.6× AZTDM ATR daily counts in the progress report.</li></ul>
+<p>Full formulas: <a href="${README}" target="_blank" rel="noopener">README</a>.</p>`;
+
+// ---------- init ----------
+// URL hash: #corr=I-10%20WB&day=2025-07-15&peak=PM&tab=cal&mile=19&time=16:30
+const H = new URLSearchParams(location.hash.slice(1));
+cur.corr = D.corridors[H.get('corr')] ? H.get('corr') : Object.keys(D.corridors)[0];
+selCorr.value = cur.corr;
+if (H.get('day')) cur.day = H.get('day');
+fillDays(); cur.day = selDay.value;
+if (H.get('peak') === 'PM') { cur.peak = 'PM'; selPeak.value = 'PM'; }
+load(); renderCal();
+if (H.get('mile') && H.get('time')) {
+  const mi = +H.get('mile'), [hh, mm] = H.get('time').split(':').map(Number);
+  const i = segs.findIndex(s => mi >= s.x0 && mi <= s.x1), k = MIN.indexOf(hh * 60 + mm);
+  if (i >= 0 && k >= 0) analyzeCell(i, k); else analyzeBottleneck();
+} else analyzeBottleneck();
+if (H.get('tab')) { const b = document.querySelector(`#tabs button[data-p="p-${H.get('tab')}"]`); if (b) b.click(); }
+if (H.get('scroll') === 'ap') setTimeout(() => window.scrollTo(0, document.getElementById('ap').offsetTop - 8), 600);
+</script>
+</body>
+</html>
